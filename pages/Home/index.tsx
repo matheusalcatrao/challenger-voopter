@@ -7,11 +7,10 @@ import {
   Text,
   TouchableOpacity,
   Button,
-  TextInput,
-  ScrollView,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { getAddress } from "../../api/Geocode";
+import { InputSuggestions } from "../../components/InputSuggestions";
 
 type DayType = {
   dateString: string;
@@ -27,6 +26,9 @@ type MarkedDates = {
   };
 };
 
+const MIN_TEXT_TO_SEARCHING = 5;
+const MAX_DAY_SELECTED = 4;
+
 const Home: React.FC = () => {
   const [originDaysSelect, setOriginDaySelect] = React.useState<MarkedDates>(
     {}
@@ -40,7 +42,10 @@ const Home: React.FC = () => {
     React.useState<boolean>(false);
   const [addressOrigin, setAddressOrigin] = React.useState<string>("");
   const [addressDestiny, setAddressDestiny] = React.useState<string>("");
-  const [suggestions, setSugestions] = React.useState<Array<string>>([]);
+  const [suggestionsAddressOrigin, setSuggestionsAddressOrigin] =
+    React.useState<Array<string>>([]);
+  const [suggestionsAddressDestiny, setSugestionsAddressDestiny] =
+    React.useState<Array<string>>([]);
 
   const handleOpenCalendar = (type: string) => {
     type === "origin"
@@ -54,13 +59,18 @@ const Home: React.FC = () => {
       : setShowCalendarDestiny(false);
   };
 
-  const handleChangeText = async (text: string) => {
-    setAddressOrigin(text);
+  const handleChangeText = async (text: string, type: string) => {
+    const setAddress = type === "origin" ? setAddressOrigin : setAddressDestiny;
+    const setSuggestions =
+      type === "origin"
+        ? setSuggestionsAddressOrigin
+        : setSugestionsAddressDestiny;
+    setAddress(text);
 
-    if (text.length > 5) {
+    if (text.length > MIN_TEXT_TO_SEARCHING) {
       const sugestions = await getAddress(text);
       sugestions.features.map((item: any) => {
-        setSugestions((old) => [...old, item?.properties?.address_line1]);
+        setSuggestions((old) => [...old, item?.properties?.address_line1]);
       });
     }
   };
@@ -86,7 +96,7 @@ const Home: React.FC = () => {
   const selectDate = (currentDay: DayType, type: string) => {
     const daysSelect = type === "origin" ? originDaysSelect : destinyDaysSelect;
     const setDay = type === "origin" ? setOriginDaySelect : setDestiyDaySelect;
-    if (Object.keys(daysSelect).length >= 4) {
+    if (Object.keys(daysSelect).length >= MAX_DAY_SELECTED) {
       setDay({});
       Alert.alert("Atenção", "Selecione até 4 datas.");
       return;
@@ -116,12 +126,59 @@ const Home: React.FC = () => {
     setDay(payload);
   };
 
-  const handleSelectSugestion = (item: string) => {
-    setAddressOrigin(item);
-    setSugestions([]);
+  const handleSelectSugestion = (item: string, type: string) => {
+    const setAddress = type === "origin" ? setAddressOrigin : setAddressDestiny;
+    const setSuggestions =
+      type === "origin"
+        ? setSuggestionsAddressOrigin
+        : setSugestionsAddressDestiny;
+
+    setAddress(item);
+    setSuggestions([]);
   };
 
-  console.log(suggestions);
+  const handleSubmit = () => {
+    const dateToGo = Object.keys(originDaysSelect);
+    const dateToBack = Object.keys(destinyDaysSelect);
+    const request = {
+      dateToGo,
+      dateToBack,
+      addressOrigin,
+      addressDestiny,
+    };
+    const response = [
+      {
+        name: "trip A",
+        price: 900,
+        day: "10-02-2023",
+        addressOrigin,
+        addressDestiny,
+      },
+      {
+        name: "trip B",
+        price: 1000,
+        day: "15-02-2023",
+        addressOrigin,
+        addressDestiny,
+      },
+      {
+        name: "trip C",
+        price: 1200,
+        day: "22-02-2023",
+        addressOrigin,
+        addressDestiny,
+      },
+      {
+        name: "trip D",
+        price: 700,
+        day: "25-02-2023",
+        addressOrigin,
+        addressDestiny,
+      },
+    ];
+    console.log("request", JSON.stringify(request));
+    console.log("response", JSON.stringify(response));
+  };
 
   return (
     <View style={styles.container}>
@@ -139,31 +196,19 @@ const Home: React.FC = () => {
         <Text style={styles.label}>Datas de volta:</Text>
         <Text style={styles.label}>{renderDestinyDays()}</Text>
       </TouchableOpacity>
-      <Text style={styles.label}>ORIGEM:</Text>
-      <TextInput
-        style={styles.input}
+      <InputSuggestions
+        title="ORIGEM"
         value={addressOrigin}
-        onChangeText={handleChangeText}
+        onChangeText={(item) => handleChangeText(item, "origin")}
+        suggestions={suggestionsAddressOrigin}
+        selectSuggestion={(item) => handleSelectSugestion(item, "origin")}
       />
-      {suggestions.length > 1 && (
-        <ScrollView style={{ height: 10 }}>
-          {suggestions.map((item, index) => (
-            <TouchableOpacity
-              key={String(index)}
-              style={styles.listContainer}
-              onPress={() => handleSelectSugestion(item)}
-            >
-              <Text>{item}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      <Text style={styles.label}>DESTINO:</Text>
-      <TextInput
-        style={styles.input}
+      <InputSuggestions
+        title="DESTINO"
         value={addressDestiny}
-        onChangeText={setAddressDestiny}
+        onChangeText={(item) => handleChangeText(item, "destiny")}
+        suggestions={suggestionsAddressDestiny}
+        selectSuggestion={(item) => handleSelectSugestion(item, "destiny")}
       />
       <Modal visible={showCalendarOrigin} animationType="slide" transparent>
         <View style={styles.center}>
@@ -193,11 +238,21 @@ const Home: React.FC = () => {
           />
         </View>
       </Modal>
+      <View style={{ marginTop: "20%" }}>
+        <Button
+          title="Pesquisar"
+          onPress={() => handleSubmit()}
+          color="#50cebb"
+        />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  label: {
+    color: "white",
+  },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -209,23 +264,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#4d4d4d",
     marginBottom: 30,
   },
-  label: {
-    color: "white",
-  },
   center: {
     flex: 1,
     justifyContent: "flex-end",
-  },
-  input: {
-    marginTop: 20,
-    borderBottomWidth: 3,
-    fontSize: 17,
-    color: "white",
-    marginBottom: 17,
-  },
-  listContainer: {
-    backgroundColor: "white",
-    padding: 10,
   },
 });
 
