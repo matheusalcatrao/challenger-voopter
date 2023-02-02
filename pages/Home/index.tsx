@@ -40,7 +40,7 @@ const Home: React.FC = () => {
     React.useState<boolean>(false);
   const [addressOrigin, setAddressOrigin] = React.useState<string>("");
   const [addressDestiny, setAddressDestiny] = React.useState<string>("");
-  const [suggestions, setSuggestions] = React.useState<Array<string>>([]);
+  const [suggestions, setSugestions] = React.useState<Array<string>>([]);
 
   const handleOpenCalendar = (type: string) => {
     type === "origin"
@@ -60,7 +60,7 @@ const Home: React.FC = () => {
     if (text.length > 5) {
       const sugestions = await getAddress(text);
       sugestions.features.map((item: any) => {
-        setSuggestions((old) => [...old, item?.properties?.address_line1]);
+        setSugestions((old) => [...old, item?.properties?.address_line1]);
       });
     }
   };
@@ -118,7 +118,7 @@ const Home: React.FC = () => {
 
   const handleSelectSugestion = (item: string) => {
     setAddressOrigin(item);
-    setSuggestions([]);
+    setSugestions([]);
   };
 
   console.log(suggestions);
